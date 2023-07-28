@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def cat_matrices(mat1, mat2, axis=0):
     try:
         np_mat1 = np.array(mat1)
