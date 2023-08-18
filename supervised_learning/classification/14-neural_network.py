@@ -150,9 +150,11 @@ class NeuralNetwork:
         result = self.evaluate(X, Y)
         return result
 
+
 def sigmoid(number):
     """Sigmoid function"""
     return 1 / (1 + np.exp(-number))
+
 
 def derivate_sigmoid(z):
     """Sigmoid derivate"""
