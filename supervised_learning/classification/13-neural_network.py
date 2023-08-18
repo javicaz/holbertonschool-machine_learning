@@ -7,13 +7,13 @@ import numpy as np
 
 class NeuralNetwork:
     """
-    A class that defines a neural network with one hidden layer performing
+    # A class that defines a neural network with one hidden layer performing
     binary classification
     """
 
     def __init__(self, nx, nodes):
         """
-        class constructor
+        # class constructor
         :param nx: is the number of input features to the neuron
         """
         if type(nx) is not int:
@@ -36,7 +36,7 @@ class NeuralNetwork:
 
     def forward_prop(self, X):
         """
-        Calculates the forward propagation of the neural network
+        # Calculates the forward propagation of the neural network
         :param X: np array with the input data of shape (nx, m)
         :return: the private attributes __A1 and __A2
         """
@@ -48,7 +48,7 @@ class NeuralNetwork:
 
     def cost(self, Y, A):
         """
-        calculates the cost of the model using logistic regression
+        #calculates the cost of the model using logistic regression
         :param Y: a np array with correct labels of shape (1, m)
         :param A: a np array with the activated output of shape (1, m)
         :return: the cost
@@ -60,7 +60,7 @@ class NeuralNetwork:
 
     def evaluate(self, X, Y):
         """
-        evaluates the neural network prediction
+        #evaluates the neural network prediction
         :param X: np array with input data of shape (nx, m)
         :param Y: np array with correct label of shape (1, m)
         :return: neuron´s prediction and cost of the network
@@ -72,7 +72,7 @@ class NeuralNetwork:
 
     def gradient_descent(self, X, Y, A1, A2, alpha=0.05):
         """
-        calculates one pass of gradient descent on the neuron
+        #calculates one pass of gradient descent on the neuron
         :param X: np array with input data of shape (nx, m)
         :param Y: np array with correct labels of shape (1, m)
         :param A1: np array with activated hidden layer output of shape (1, m)
