@@ -1,123 +1,142 @@
 #!/usr/bin/env python3
-"""
-Module to create a neural network
-"""
+"""Making neural network"""
+
+
 import numpy as np
 
 
 class NeuralNetwork:
-    """
-    # A class that defines a neural network with one hidden layer performing
-    binary classification
-    """
-
+    """making Neural network"""
     def __init__(self, nx, nodes):
-        """
-        # class constructor
-        :param nx: is the number of input features to the neuron
-        """
-        if type(nx) is not int:
+        """Initialize neural network"""
+        if type(nx) != int:
             raise TypeError("nx must be an integer")
         if nx < 1:
             raise ValueError("nx must be a positive integer")
-        self.nx = nx
-        if type(nodes) is not int:
+        if type(nodes) != int:
             raise TypeError("nodes must be an integer")
         if nodes < 1:
             raise ValueError("nodes must be a positive integer")
-        # hidden layer
-        self.__W1 = np.random.randn(nodes, nx)
-        self.__b1 = np.zeros((nodes, 1))
+        """The weights vector for the hidden layer"""
+        self.__W1 = np.random.normal(size=(nodes, nx))
+        """The bias for the hidden layer"""
+        self.__b1 = np.zeros(nodes).reshape(nodes, 1)
+        """The activated output for the hidden layer"""
         self.__A1 = 0
-        # output neuron
-        self.__W2 = np.random.randn(1, nodes)
+        """The weights vector for the output neuron"""
+        self.__W2 = np.random.normal(size=(1, nodes))
+        """The bias for the output neuron"""
         self.__b2 = 0
+        """The activated output for the output neuron (prediction)"""
         self.__A2 = 0
-
-    def forward_prop(self, X):
-        """
-        # Calculates the forward propagation of the neural network
-        :param X: np array with the input data of shape (nx, m)
-        :return: the private attributes __A1 and __A2
-        """
-        z1 = np.matmul(self.__W1, X) + self.__b1
-        self.__A1 = 1 / (1 + np.exp(-z1))
-        z2 = np.matmul(self.__W2, self.__A1) + self.__b2
-        self.__A2 = 1 / (1 + np.exp(-z2))
-        return self.__A1, self.__A2
-
-    def cost(self, Y, A):
-        """
-        #calculates the cost of the model using logistic regression
-        :param Y: a np array with correct labels of shape (1, m)
-        :param A: a np array with the activated output of shape (1, m)
-        :return: the cost
-        """
-        cost = Y * np.log(A) + (1 - Y) * np.log(1.0000001 - A)
-        cost = np.sum(cost)
-        cost = - cost / A.shape[1]
-        return cost
-
-    def evaluate(self, X, Y):
-        """
-        #evaluates the neural network prediction
-        :param X: np array with input data of shape (nx, m)
-        :param Y: np array with correct label of shape (1, m)
-        :return: neuron´s prediction and cost of the network
-        """
-        self.forward_prop(X)
-        prediction = np.where(self.__A2 >= 0.5, 1, 0)
-        cost = self.cost(Y, self.__A2)
-        return prediction, cost
-
-    def gradient_descent(self, X, Y, A1, A2, alpha=0.05):
-        """
-        #calculates one pass of gradient descent on the neuron
-        :param X: np array with input data of shape (nx, m)
-        :param Y: np array with correct labels of shape (1, m)
-        :param A1: np array with activated hidden layer output of shape (1, m)
-        :param A2: np array with activated output of shape (1, m)
-        :param alpha: the learning rate
-        :return: no return
-        """
-        # gradient descent for hidden layer
-        dz2 = A2 - Y
-        dw2 = np.matmul(A1, dz2.T) / A1.shape[1]
-        db2 = np.sum(dz2, axis=1, keepdims=True) / A2.shape[1]
-
-        # derivative of the sigmoid function
-        da1 = A1 * (1 - A1)
-        # gradient descent for output layer
-        dz1 = np.matmul(self.__W2.T, dz2)
-        dz1 = dz1 * da1
-        dw1 = np.matmul(X, dz1.T) / A1.shape[1]
-        db1 = np.sum(dz1, axis=1, keepdims=True) / A1.shape[1]
-        # updated value for weights and bias
-        self.__W2 = self.__W2 - alpha * dw2.T
-        self.__b2 = self.__b2 - alpha * db2
-        self.__W1 = self.__W1 - alpha * dw1.T
-        self.__b1 = self.__b1 - alpha * db1
 
     @property
     def W1(self):
+        """weights vector for the hidden layer"""
         return self.__W1
 
     @property
     def b1(self):
+        """bias for the hidden layer"""
         return self.__b1
 
     @property
     def A1(self):
+        """Prediction for the hidden layer"""
         return self.__A1
 
     @property
     def W2(self):
+        """Weights vector for the output neuron"""
         return self.__W2
 
     @property
     def b2(self):
+        """bias for the output neuron """
         return self.__b2
 
     @property
     def A2(self):
+        """prediction for the output neuron"""
         return self.__A2
+
+    def forward_prop(self, X):
+        """Forward propagation"""
+        """Ponderate weights and data"""
+        sump1 = np.dot(self.__W1, X) + self.__b1
+        self.__A1 = sigmoid(sump1)
+        sump2 = np.dot(self.__W2, self.__A1) + self.__b2
+        """using activation function"""
+        A2 = sigmoid(sump2)
+        """Updating predictions for hidden layer and output layer"""
+        self.__A2 = A2
+        return (self.__A1, self.__A2)
+
+    def cost(self, Y, A):
+        """
+        Cost function CROSS ENTROPY
+        Cost=(labels*log(predictions)+(1-labels)*log(1-predictions))/len(labels)
+        Params:
+            Y: correct labels for the input data
+            A: activated output of the neuron for each(prediction)
+        """
+        """take the error when label = 1"""
+        cost1 = Y * np.log(A)
+        """take the error when label = 0"""
+        cost2 = (1 - Y) * np.log(1.0000001 - A)
+        """Take the sum of both costs"""
+        total_cost = cost1 + cost2
+        """Calculate the number of observations"""
+        """m : number of classes (dog, cat, fish)"""
+        m = len(np.transpose(Y))
+        """print(m)"""
+        """Take the average cost"""
+        cost_avg = -total_cost.sum() / m
+        return cost_avg
+
+    def evaluate(self, X, Y):
+        """Evaluate neuron
+        return: Prediction, Cost
+        """
+        prediction_1, prediction2 = self.forward_prop(X)
+        cost = self.cost(Y, prediction2)
+        # np.rint: Round elements of the array to the nearest integer.
+        prediction2 = np.rint(prediction2).astype(int)
+        # print(prediction.shape)
+        return (prediction2, cost)
+
+    def gradient_descent(self, X, Y, A1, A2, alpha=0.05):
+        """
+        Gradient descent
+        Partial derivates of COST FUNCTION respect to Weigth and bias
+        1 step
+        """
+        m = len(Y[0])
+        # Derivate cost function
+        dz2 = A2 - Y
+        # Output layer
+        weight_derivative_2 = np.dot(A1, dz2.T) / m
+        bias_derivative_2 = np.sum(dz2, axis=1, keepdims=True) / m
+        # derivate sigmoid
+        d_sigmoid = derivate_sigmoid(A1)
+        # derivate cost function
+        dz1 = np.dot(self.__W2.T, dz2) * d_sigmoid
+        # hidden layer
+        weight_derivative_1 = np.dot(X, dz1.T) / m
+        bias_derivative_1 = np.sum(dz1, axis=1, keepdims=True) / m
+        # Updating weigths and bias hidden layer
+        self.__b1 = self.__b1 - (alpha * bias_derivative_1)
+        self.__W1 = self.__W1 - (alpha * weight_derivative_1.T)
+        # Updating weigths and bias output layer
+        self.__b2 = self.__b2 - (alpha * bias_derivative_2)
+        self.__W2 = self.__W2 - (alpha * weight_derivative_2.T)
+
+
+def sigmoid(number):
+    """Sigmoid function"""
+    return 1 / (1 + np.exp(-number))
+
+
+def derivate_sigmoid(z):
+    """Sigmoid derivate"""
+    return z * (1 - z)
