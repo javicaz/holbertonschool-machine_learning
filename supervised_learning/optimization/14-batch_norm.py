@@ -1,34 +1,28 @@
 #!/usr/bin/env python3
-
-"""Useless comment"""
-
-import tensorflow as tf
+"""
+batch optimization to SGD
+"""
+import tensorflow.compat.v1 as tf
 
 
 def create_batch_norm_layer(prev, n, activation):
     """
-    Create a layer that normalized the unactivate input data
-    :param prev: The prev layers ouput
-    :param n: The number of node in the layer
-    :param activation: The activation fuction
-    :return: The new created layer
+       Creates a batch normalization layer for a neural network in tensorflow.
+       Args:
+         prev is the activated output of the previous layer
+         n: number of nodes in the layer to be created
+         activation: activation function that should be used on the output
+           of the layer
+       Returns:
+         A tensor of the activated output for the layer.
     """
-    init = tf.contrib.layers.variance_scaling_initializer(mode="FAN_AVG")
-    dense_layer = tf.layers.Dense(units=n,
-                                  kernel_initializer=init)
-
-    output = dense_layer(prev)
-
-    mean, variance = tf.nn.moments(output, axes=[0])
-
-    scale = tf.Variable(tf.ones([n]))
-    shift = tf.Variable(tf.zeros([n]))
-
+    weights = tf.contrib.layers.variance_scaling_initializer(mode="FAN_AVG")
+    layerX = tf.keras.layers.dense(prev, n, kernel_initializer=weights)
+    mean, variance = tf.nn.moments(layerX, 0)
+    gamma = tf.Variable(tf.ones(n), trainable=True)
+    beta = tf.Variable(tf.zeros(n), trainable=True)
     epsilon = 1e-8
-    output = tf.nn.batch_normalization(output, mean, variance,
-                                       shift, scale, epsilon)
-
-    if activation is not None:
-        output = activation(output)
-
-    return output
+    batch_norm = tf.nn.batch_normalization(
+        layerX, mean, variance, beta, gamma, epsilon
+    )
+    return activation(batch_norm)
