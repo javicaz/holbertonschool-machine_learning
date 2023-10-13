@@ -115,3 +115,48 @@ class Yolo:
             box_class_probs.append(sigmoid(output[:, :, :, 5:]))
 
         return boxes, box_confidences, box_class_probs
+
+    def filter_boxes(self, boxes, box_confidences, box_class_probs):
+        """
+        Filter boxes that are under a certain proba threshold
+        :param boxes: The boxes (center, witdh height)
+        :param box_confidences: The confidences of a box
+        :param box_class_probs: The proba for each classes
+        :return: filtered_boxes: a numpy.ndarray of shape (?, 4)
+                                 containing all of the filtered bounding boxes:
+                 box_classes: a numpy.ndarray of shape
+                              (?,) containing the class
+                              number that each box in filtered_boxes
+                              predicts, respectively
+                 box_scores: a numpy.ndarray of shape (?) containing
+                             the box scores for each box in
+                             filtered_boxes
+        """
+        filtered_boxes = []
+        box_classes = []
+        box_scores = []
+
+        for boxes_i, box_preds in enumerate(box_confidences):
+            height, width, anchors, _ = box_preds.shape
+            for h_i in range(height):
+                for w_i in range(width):
+                    for anchor in range(anchors):
+                        current_condifance = box_preds[h_i, w_i, anchor, 0]
+                        current_boxes = boxes[boxes_i][h_i, w_i, anchor]
+                        classe = np.argmax(
+                            box_class_probs[boxes_i][h_i, w_i, anchor]
+                        )
+                        classe_proba = np.max(
+                            box_class_probs[boxes_i][h_i, w_i, anchor]
+                        )
+                        box_score = current_condifance * classe_proba
+                        if box_score >= self.class_t:
+                            filtered_boxes.append(current_boxes)
+                            box_classes.append(classe)
+                            box_scores.append(box_score)
+
+        filtered_boxes = np.array(filtered_boxes)
+        box_classes = np.array(box_classes)
+        box_scores = np.array(box_scores)
+
+        return filtered_boxes, box_classes, box_scores
