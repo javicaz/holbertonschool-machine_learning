@@ -69,3 +69,15 @@ class NST:
                    for layer in self.style_layers]
                    + [model.get_layer(self.content_layer).output])
         self.model = tf.keras.models.Model(model.input, outputs)
+
+    @staticmethod
+    def gram_matrix(input_layer):
+        """ gram matrix """
+        if not isinstance(input_layer, (tf.Tensor, tf.Variable)) or\
+                tf.rank(input_layer).numpy() != 4:
+            raise TypeError("input_layer must be a tensor of rank 4")
+        ndata, h, w, c = tf.shape(input_layer).numpy()
+        F = tf.reshape(input_layer, (ndata, h * w, c))
+        gram = tf.matmul(F, F, transpose_a=True)
+        gram /= (h * w)
+        return gram

@@ -30,6 +30,7 @@ class NST:
         self.alpha = alpha
         self.beta = beta
         self.load_model()
+        self.generate_features()
 
     @staticmethod
     def scale_image(image):
@@ -69,3 +70,30 @@ class NST:
                    for layer in self.style_layers]
                    + [model.get_layer(self.content_layer).output])
         self.model = tf.keras.models.Model(model.input, outputs)
+
+    @staticmethod
+    def gram_matrix(input_layer):
+        """ gram matrix """
+        if not isinstance(input_layer, (tf.Tensor, tf.Variable)) or\
+                tf.rank(input_layer).numpy() != 4:
+            raise TypeError("input_layer must be a tensor of rank 4")
+        ndata, h, w, c = tf.shape(input_layer).numpy()
+        F = tf.reshape(input_layer, (ndata, h * w, c))
+        gram = tf.matmul(F, F, transpose_a=True)
+        gram /= (h * w)
+        return gram
+
+    def generate_features(self):
+        """ extract features used to calculate neural style cost """
+        vgg19 = tf.keras.applications.vgg19
+        content = vgg19.preprocess_input(self.content_image * 255)
+        style = vgg19.preprocess_input(self.style_image * 255)
+        out_c = self.model(content)
+        outputs = self.model(style)
+        sty = outputs[:len(outputs) - 1]
+        cont = out_c[len(out_c) - 1]
+        gram_style_features = []
+        for ft in sty:
+            gram_style_features.append(self.gram_matrix(ft))
+        self.gram_style_features = gram_style_features
+        self.content_feature = cont
