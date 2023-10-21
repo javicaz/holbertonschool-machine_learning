@@ -1,149 +1,246 @@
 #!/usr/bin/env python3
-"""Neural Style Transfer Module"""
+"""Module class NST."""
 import numpy as np
 import tensorflow as tf
 
 
 class NST:
-    """Performs tasks for neural style transfer:
+    """Performs tasks for neural style transfer."""
 
-    Public class attributes:
-    style_layers = ['block1_conv1', 'block2_conv1', 'block3_conv1',
-    'block4_conv1', 'block5_conv1']
-    content_layer = 'block5_conv2'
-    Class constructor: def __init__(self, style_image, content_image,
-    alpha=1e4, beta=1):
-    style_image - the image used as a style reference, stored as a
-    numpy.ndarray
-    content_image - the image used as a content reference, stored as a
-    numpy.ndarray
-    alpha - the weight for content cost
-    beta - the weight for style cost
-    if style_image is not a np.ndarray with the shape (h, w, 3), raise a
-    TypeError with the message style_image must be a numpy.ndarray with
-    shape (h, w, 3)
-    if content_image is not a np.ndarray with the shape (h, w, 3), raise
-    a TypeError with the message content_image must be a numpy.ndarray with
-    shape (h, w, 3)
-    if alpha is not a non-negative number, raise a TypeError with the message
-    alpha must be a non-negative number
-    if beta is not a non-negative number, raise a TypeError with the message
-    beta must be a non-negative number
-    Sets the instance attributes:
-    style_image - the preprocessed style image
-    content_image - the preprocessed content image
-    alpha - the weight for content cost
-    beta - the weight for style cost
-    model - the Keras model used to calculate cost
-    gram_style_features - a list of gram matrices calculated from the style
-    layer outputs of the style image
-    content_feature - the content layer output of the content image
-    """
     style_layers = ['block1_conv1', 'block2_conv1', 'block3_conv1',
                     'block4_conv1', 'block5_conv1']
     content_layer = 'block5_conv2'
 
     def __init__(self, style_image, content_image, alpha=1e4, beta=1):
-        if not isinstance(style_image, np.ndarray
-                          ) or len(style_image.shape
-                                   ) != 3 or style_image.shape[2] != 3:
-            raise TypeError(
-                "style_image must be a numpy.ndarray with shape (h, w, 3)")
-        if not isinstance(content_image, np.ndarray
-                          ) or len(content_image.shape
-                                   ) != 3 or content_image.shape[2] != 3:
-            raise TypeError(
-                "content_image must be a numpy.ndarray with shape (h, w, 3)")
+        """
+        Class constructor.
+
+        Args:
+            style_image (ndarray): image used as a style reference
+            content_image (ndarray): image used as a content reference
+            alpha (float, optional): weight for content cost. Defaults to 1e4.
+            beta (int, optional): weight for style cost. Defaults to 1.
+        """
+        if not isinstance(style_image, np.ndarray):
+            raise TypeError("style_image must be a numpy.ndarray with shape\
+                            (h, w, 3)")
+        if style_image.ndim != 3 or style_image.shape[-1] != 3:
+            raise TypeError("style_image must be a numpy.ndarray with shape\
+                            (h, w, 3)")
+        if not isinstance(content_image, np.ndarray):
+            raise TypeError("content_image must be a numpy.ndarray with shape\
+                            (h, w, 3)")
+        if content_image.ndim != 3 or content_image.shape[-1] != 3:
+            raise TypeError("content_image must be a numpy.ndarray with shape\
+                            (h, w, 3)")
         if not isinstance(alpha, (int, float)) or alpha < 0:
             raise TypeError("alpha must be a non-negative number")
         if not isinstance(beta, (int, float)) or beta < 0:
             raise TypeError("beta must be a non-negative number")
-
+        tf.enable_eager_execution()
         self.style_image = self.scale_image(style_image)
         self.content_image = self.scale_image(content_image)
         self.alpha = alpha
         self.beta = beta
-
         self.load_model()
-
         self.generate_features()
 
     @staticmethod
     def scale_image(image):
-        """Rescales an image such that its pixels values are between 0 and 1
-        and its largest side is 512 pixels
-        image - a numpy.ndarray of shape (h, w, 3) containing the image to be
-        scaled
-        if image is not a np.ndarray with the shape (h, w, 3), raise a
-        TypeError with the message image must be a numpy.ndarray with
-        shape (h, w, 3)
-        The scaled image should be a tf.tensor with the shape
-        (1, h_new, w_new, 3) where max(h_new, w_new) == 512 and
-        min(h_new, w_new) is scaled proportionately
-        The image should be resized using bicubic interpolation
-        After resizing, the image’s pixel values should be rescaled from the
-        range [0, 255] to [0, 1].
-        Returns: the scaled
         """
-        if not isinstance(image, np.ndarray
-                          ) or len(image.shape) != 3 or image.shape[2] != 3:
-            raise TypeError(
-                "image must be a numpy.ndarray with shape (h, w, 3)")
+        Rescales an image such that its pixels values are between 0 and 1 and\
+        its largest side is 512 pixels.
 
-        h, w, _ = image.shape
-        if h > w:
-            h_new = 512
-            w_new = w * h_new // h
-        else:
-            w_new = 512
-            h_new = h * w_new // w
-
-        scaled_image = tf.image.resize(image, tf.constant([h_new, w_new],
-                                                          dtype=tf.int32),
-                                       tf.image.ResizeMethod.BICUBIC)
-        scaled_image = tf.reshape(scaled_image, (1, h_new, w_new, 3))
-        scaled_image = tf.clip_by_value(scaled_image / 255, 0.0, 1.0)
-
-        return scaled_image
+        Args:
+            image (ndarray): contains the image to be scaled
+        Returns:
+            scaled image
+        """
+        if not isinstance(image, np.ndarray):
+            raise TypeError("image must be a numpy.ndarray with shape\
+                            (h, w, 3)")
+        if image.ndim != 3 or image.shape[-1] != 3:
+            raise TypeError("image must be a numpy.ndarray with shape\
+                            (h, w, 3)")
+        max_dim = 512
+        long_dim = max(image.shape[:-1])
+        scale = max_dim / long_dim
+        new_shape = tuple(map(lambda x: int(scale * x), image.shape[:-1]))
+        image = image[tf.newaxis, :]
+        image = tf.image.resize_bicubic(image, new_shape)
+        image = image / 255
+        image = tf.clip_by_value(image, clip_value_min=0, clip_value_max=1)
+        return image
 
     def load_model(self):
-        """Creates the model used to calculate cost
-        the model should use the VGG19 Keras model as a base
-        the model’s input should be the same as the VGG19 input
-        the model’s output should be a list containing the outputs of the
-        VGG19 layers listed in style_layers followed by content _layer
-        saves the model in the instance attribute model"""
-        base_model = tf.keras.applications.VGG19(include_top=False)
-        base_model.trainable = False
-
-        custom_objects = {'MaxPooling2D': tf.keras.layers.AveragePooling2D}
-        base_model.save('base_model')
-        base_model = tf.keras.models.load_model('base_model',
-                                                custom_objects=custom_objects)
-
-        outputs = [base_model.get_layer(layer
-                                        ).output for layer in self.style_layers]
-        outputs.append(base_model.get_layer(self.content_layer).output)
-        model = tf.keras.Model(base_model.inputs, outputs)
-
-        self.model = model
+        """Create the model used to calculate cost."""
+        base_vgg = tf.keras.applications.VGG19(include_top=False,
+                                               weights='imagenet',
+                                               input_tensor=None,
+                                               input_shape=None, pooling=None,
+                                               classes=1000)
+        custom_object = {'MaxPooling2D': tf.keras.layers.AveragePooling2D}
+        base_vgg.save('base_vgg')
+        vgg = tf.keras.models.load_model('base_vgg',
+                                         custom_objects=custom_object)
+        for layer in vgg.layers:
+            layer.trainable = False
+        style_outputs = [vgg.get_layer(name).output for name in
+                         self.style_layers]
+        content_output = vgg.get_layer(self.content_layer).output
+        outputs = style_outputs + [content_output]
+        self.model = tf.keras.models.Model(inputs=vgg.input, outputs=outputs)
 
     @staticmethod
     def gram_matrix(input_layer):
-        """input_layer - an instance of tf.Tensor or tf.Variable of shape
-        (1, h, w, c)containing the layer output whose gram matrix should be
-        calculated
-        if input_layer is not an instance of tf.Tensor or tf.Variable of
-        rank 4, raise a TypeError with the message input_layer must be a tensor
-        of rank 4
-        Returns: a tf.Tensor of shape (1, c, c) containing the gram matrix of
-        input_layer"""
-        if not isinstance(input_layer, (tf.Variable, tf.Tensor)) or len(input_layer.shape) != 4:
+        """
+        Calculate gram matrices.
+
+        Args:
+            input_layer (tf.Tensor or tf.Variable): contains the layer output
+                                                    whose gram matrix should
+                                                    be calculated
+        Returns:
+            tf.Tensor containing the gram matrix of input_layer
+        """
+        if not isinstance(input_layer, (tf.Tensor, tf.Variable)):
             raise TypeError("input_layer must be a tensor of rank 4")
-
+        if len(input_layer.shape) != 4:
+            raise TypeError("input_layer must be a tensor of rank 4")
         result = tf.linalg.einsum('bijc,bijd->bcd', input_layer, input_layer)
-
         input_shape = tf.shape(input_layer)
         num_locations = tf.cast(input_shape[1] * input_shape[2], tf.float32)
-
+        result = result / num_locations
         return result
+
+    def generate_features(self):
+        """Extract the features used to calculate neural style cost."""
+        style_image = tf.keras.applications.vgg19.preprocess_input(
+            self.style_image * 255)
+        content_image = tf.keras.applications.vgg19.preprocess_input(
+            self.content_image * 255)
+        outputs_style = self.model(style_image)
+        style_outputs = outputs_style[:-1]
+        outputs_content = self.model(content_image)
+        content_output = outputs_content[-1]
+        self.gram_style_features = [self.gram_matrix(style_output) for
+                                    style_output in style_outputs]
+        self.content_feature = content_output
+
+    def layer_style_cost(self, style_output, gram_target):
+        """
+        Calculate the style cost for a single layer.
+
+        Args:
+            style_output (Tensor): contains the layer style output of the
+                                   generated image
+            gram_target (Tensor): gram matrix of the target style output for
+                                  that layer
+        Returns:
+            layer's style cost
+        """
+        c = style_output.shape[-1]
+        if not isinstance(style_output, (tf.Tensor, tf.Variable)):
+            raise TypeError("style_output must be a tensor of rank 4")
+        if len(style_output.shape) != 4:
+            raise TypeError("style_output must be a tensor of rank 4")
+        if not isinstance(gram_target, (tf.Tensor, tf.Variable)):
+            raise TypeError("gram_target must be a tensor of shape\
+                [1, {}, {}]".format(c, c))
+        if gram_target.shape != (1, c, c):
+            raise TypeError("gram_target must be a tensor of shape\
+                [1, {}, {}]".format(c, c))
+        gram_style = self.gram_matrix(style_output)
+        style_cost = tf.reduce_mean(tf.square(gram_style - gram_target))
+        return style_cost
+
+    def style_cost(self, style_outputs):
+        """
+        Calculate the style cost.
+
+        Args:
+            style_outputs (Tensor): style outputs for the generated image
+        Returns:
+            style cost
+        """
+        if not isinstance(style_outputs, list):
+            raise TypeError("style_outputs must be a list with a length of\
+                {}".format(len(self.style_layers)))
+        if len(self.style_layers) != len(style_outputs):
+            raise TypeError("style_outputs must be a list with a length of\
+                {}".format(len(self.style_layers)))
+        style_costs = []
+        weight = 1 / len(self.style_layers)
+        for style_output, gram_target in zip(style_outputs,
+                                             self.gram_style_features):
+            layer_style_cost = self.layer_style_cost(style_output, gram_target)
+            weighted_layer_style_cost = weight * layer_style_cost
+            style_costs.append(weighted_layer_style_cost)
+        style_cost = tf.add_n(style_costs)
+        return style_cost
+
+    def content_cost(self, content_output):
+        """
+        Calculate the content cost.
+
+        Args:
+            content_output (Tensor): contains the content output for the
+                                     generated image
+        Returns:
+            content cost
+        """
+        if not isinstance(content_output, (tf.Tensor, tf.Variable)):
+            raise TypeError("content_output must be a tensor of shape\
+                {}".format(self.content_feature.shape))
+        if content_output.shape != self.content_feature.shape:
+            raise TypeError("content_output must be a tensor of shape\
+                {}".format(self.content_feature.shape))
+        content_cost = tf.reduce_mean(tf.square(content_output -
+                                                self.content_feature))
+        return content_cost
+
+    def total_cost(self, generated_image):
+        """
+        Calculate the total cost.
+
+        Args:
+            generated_image (Tensor): contains the generated image
+        Returns:
+            (J, J_content, J_style)
+        """
+        if not isinstance(generated_image, (tf.Tensor, tf.Variable)):
+            raise TypeError("generated_image must be a tensor of shape\
+                {}".format(self.content_image.shape))
+        if generated_image.shape != self.content_image.shape:
+            raise TypeError("generated_image must be a tensor of shape\
+                {}".format(self.content_image.shape))
+        generated_image = tf.keras.applications.vgg19.preprocess_input(
+            generated_image * 255)
+        outputs_generated = self.model(generated_image)
+        style_outputs = outputs_generated[:-1]
+        content_output = outputs_generated[-1]
+        style_cost = self.style_cost(style_outputs)
+        content_cost = self.content_cost(content_output)
+        total_cost = (self.alpha * content_cost + self.beta * style_cost)
+        return (total_cost, content_cost, style_cost)
+
+    def compute_grads(self, generated_image):
+        """
+        Compute the gradients for the generated image.
+
+        Args:
+            generated_image (Tensor): contains the generated image
+        Returns:
+            gradients, J_total, J_content, J_style
+        """
+        if not isinstance(generated_image, (tf.Tensor, tf.Variable)):
+            raise TypeError("generated_image must be a tensor of shape\
+                {}".format(self.content_image.shape))
+        if generated_image.shape != self.content_image.shape:
+            raise TypeError("generated_image must be a tensor of shape\
+                {}".format(self.content_image.shape))
+        with tf.GradientTape() as tape:
+            loss = self.total_cost(generated_image)
+            total_cost, content_cost, style_cost = loss
+        gradients = tape.gradient(total_cost, generated_image)
+        return (gradients, total_cost, content_cost, style_cost)
